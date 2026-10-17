@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --surface-2: #eef2f0;
+  --ink: #0f1a15;
+  --ink-2: #4b5a53;
+  --line: #dde4e0;
+  --brand: #00874a;
+  --brand-ink: #ffffff;
+  --brand-deep: #063322;
+  --accent: #d9a400;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b110e;
+    --surface: #141c18;
+    --surface-2: #1b2520;
+    --ink: #e8efeb;
+    --ink-2: #9fb0a7;
+    --line: #26332c;
+    --brand: #19b36b;
+    --brand-ink: #04140c;
+    --brand-deep: #06261a;
+    --accent: #f2c230;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-deep: var(--brand-deep);
+  --color-accent: var(--accent);
+  --font-sans: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
+  --font-display: "Oswald", "Bebas Neue", "Arial Narrow", var(--font-sans);
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+/* 記録・数字は等幅で揃える */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* iPhone のホームバー分の余白 */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
