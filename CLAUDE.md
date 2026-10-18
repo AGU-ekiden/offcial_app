@@ -1,4 +1,5 @@
 @AGENTS.md
+@README.md
 
 # 開発方針（Claude Code 向け）
 
@@ -22,7 +23,7 @@
 
 ## 個人情報・安全
 
-- 部員DBの生年月日・暗証番号・点呼タグなど、公開しない列はアプリに読み込まない（`src/lib/notion/mappers.ts`）。「公開」にチェックがある行だけを出す
+- 生年月日・暗証番号・点呼タグなど、サイトに出していない項目はアプリ用データに入れない（サイト側の `lib/app-data.js`）。「公開」にチェックがある行だけを出す
 - Notion のトークンをアプリ（クライアント）に含めない
 - 最初の版はログイン・アカウント機能を付けない
 
@@ -35,15 +36,21 @@
 
 後回し：大会当日の速報、応援メッセージ・スタンプ、会場チェックイン、グッズ案内。
 
+## 構成（決定済み）
+
+- Expo（React Native）+ Expo Router + TypeScript。試作の Next.js PWA は置き換えた（git の履歴に残っている）
+- アプリは公式サイトが書き出す `https://aogaku-tf.com/app/v1/data.json` だけを読む。Notion には直接つながない
+- データを作る処理・通知を送る処理は公式サイトのリポジトリ（`ekidenagustaff-debug/agu-ekiden-site` の `lib/app-data.js`・`scripts/notify-app.mjs`）にある。データの形を変えるときは `src/data/types.ts` と両方を直す
+- 通知は Firebase Cloud Messaging のトピック購読（`news` / `results` / `videos` / `member-<ID>`）。端末の登録・サーバーは持たない
+
 ## 未決定の事項（勝手に決めない）
 
-- 企画では「新しいリポジトリで Expo（React Native）」「GitHub Actions がアプリ用データを書き出してロリポップに置き、Firebase で通知」となっている。このリポジトリは現状 Next.js の PWA で、Notion を直接読みに行く構成（README 参照）。どちらで進めるかはユーザーに確認する
-- ストアの名義、費用負担、運用担当、写真ルール、卒業後の選手情報の扱いなどは `docs/app-plan.md` の「決めること」を参照
+- アプリ名・アイコン・バンドルID（今は仮）、ストアの名義、費用負担、運用担当、写真ルール、卒業後の選手情報の扱いなどは `docs/app-plan.md` の「決めること」を参照
 
 ## チェック
 
 ```bash
-npm run lint
 npm run typecheck
-npm run build
+npm run lint
+npm test
 ```

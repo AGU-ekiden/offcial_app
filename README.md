@@ -1,112 +1,90 @@
-# AGU EKIDEN 公式アプリ
+# 青山学院大学陸上競技部 長距離ブロック 公式アプリ
 
-青山学院大学陸上競技部（長距離ブロック）の公式アプリです（Web アプリ / PWA）。
-ookami「Player!」の代わりとして作っています。データはすべて、**公式サイトと同じ Notion の管理用DB**から読み込みます。
+「通知・速報・応援」でファンとチームをつなぐ公式アプリです（iPhone / Android）。
+記録の公式な置き場は[公式サイト](https://aogaku-tf.com/)で、アプリは「いち早く届く」「ここでしか見られない」ための場所です。
+企画の全文は [`docs/app-plan.md`](docs/app-plan.md)、開発の約束ごとは [`CLAUDE.md`](CLAUDE.md) にあります。
 
-- 部員が Notion を更新すると、**数分でアプリに自動で反映**されます（git push や再デプロイは不要）
-- 「ホーム画面に追加」すれば、iPhone でも Android でもアプリとして使えます（ストア審査や年会費はかかりません）
-- `NOTION_TOKEN` を設定しなくてもサンプルデータで動くので、すぐに画面を確認できます
+## 最初の版の機能
 
-## 機能
+| タブ | 内容 |
+|---|---|
+| ホーム | 次の大会までの日数、最新の結果、新着ニュース、限定動画 |
+| 新着 | ニュースの一覧（結果・予定・お知らせで絞り込み） |
+| 大会 | これからの予定（月ごと・日程未定）と直近1年ほどの結果（駅伝は区間ごと）。過去の記録は公式サイトへ |
+| 部員 | 選手・マネージャー・スタッフを全員同じ形で紹介。選手ごとに「結果の通知を受け取る」 |
+| 動画 | 学内タイムトライアル・練習・合宿・寮生活などの限定動画 |
 
-| タブ | 内容 | 使う Notion DB |
-|---|---|---|
-| ホーム | 次の大会までのカウントダウン、最新ニュース、推し選手、最新の結果、スポンサー | 予定・お知らせ・競技結果・写真(ヒーロー)・スポンサー |
-| ニュース | お知らせ一覧、コラム（Notion ページ本文をそのまま表示） | お知らせDB・コラムDB |
-| 選手 | 選手・スタッフ名鑑（学年別、検索、男女の絞り込み、推し選手）、個人ページ（大学・高校の自己ベスト比較） | 部員DB・競技結果DB・高校自己ベストDB・写真DB |
-| 大会 | 今後の日程（出場予定選手、カレンダーに追加）、年度別の結果（チーム順位つき）、三大駅伝の区間別青学記録 | 予定DB・競技結果DB・大学結果DB・駅伝青学記録 |
-| 応援 | グッズ、スポンサー、御礼、シェア・SNS | グッズDB・スポンサーDB・御礼DB |
+- ログインはありません。通知の設定と選んだ選手は端末の中だけに保存します
+- フォローの数・人気の順位などは、どこにも表示しません（`CLAUDE.md` の方針）
+- 一度読み込んだデータは端末に保存し、オフラインでも前回の内容を表示します
 
-ほかの特徴:
-
-- **自己ベストを自動で計算**: 競技結果DBの記録から種目ごとのベストを出すので、部員DBの PB 欄を手で更新する必要はありません（DNF・DNS・非公認・ペースメーカーは除外）
-- **推し選手**: 選手ページの「☆ 推す」で登録すると、ホームに表示されます（端末に保存されるのでログインは不要）
-- **Notion 画像が切れない**: Notion にアップロードした画像は約1時間でURLが無効になりますが、`/api/img` が毎回新しいURLを取り直します。公式サイトのように画像を外部URLにする必要はありません
-- **個人情報は出さない**: 部員DBの生年月日・暗証番号・点呼タグなどはアプリに一切読み込みません（`src/lib/notion/mappers.ts`）。「公開」にチェックが入った行だけを表示します
-
-## 技術構成
-
-- Next.js 16（App Router / Cache Components）+ TypeScript + Tailwind CSS v4
-- Notion REST API を `fetch` で直接呼び出し（SDK は不使用。公式サイトの `lib/notion.js` と同じ方式）
-- ホスティングは Vercel を想定（公式サイトと同じアカウントで運用できます）
+## しくみ
 
 ```
-src/
-├── app/                 画面（ルーティング）
-│   ├── api/img/         Notion 画像の署名付きURLを取り直すプロキシ
-│   ├── api/revalidate/  すぐに反映させるためのエンドポイント
-│   ├── members/ news/ columns/ races/ support/
-│   └── manifest.ts      PWA 設定
-├── components/          共通UI
-└── lib/
-    ├── data.ts          データ取得（キャッシュ・反映間隔はここで設定）
-    ├── notion/          Notion API クライアント・列の読み取り
-    ├── config.ts        DB ID・公開してよい画像列の設定
-    └── mock.ts          サンプルデータ（架空）
-public/sw.js             Service Worker（オフライン表示）
+Notion（部員が入力）→「サイト更新」ボタン → GitHub Actions（公式サイトのリポジトリ）
+  ├─ 公式サイトを作る ─────────────┐
+  ├─ アプリ用データ app/v1/data.json ─┴→ ロリポップ（aogaku-tf.com）
+  └─ 新着があれば Firebase Cloud Messaging でトピックへ通知
+アプリ → https://aogaku-tf.com/app/v1/data.json を読む（Notion には直接つながない）
 ```
 
-## ローカルで動かす
+- アプリ用データを作るのは公式サイトのリポジトリ（`ekidenagustaff-debug/agu-ekiden-site`）の `lib/app-data.js`、通知を送るのは `scripts/notify-app.mjs`
+- データの形はアプリの `src/data/types.ts` と合わせる。形を大きく変えるときは両方の `schemaVersion` を上げる（古いアプリには「アップデートしてください」と表示される）
+- 通知はトピック（`news` / `results` / `videos` / `member-<部員ID>`）を購読するだけなので、端末の登録やサーバーは不要
+
+## 開発
 
 Node.js 20 以上が必要です。
 
 ```bash
 npm install
-cp .env.example .env.local   # NOTION_TOKEN を入れると本番データ、空ならサンプルデータ
-npm run dev                  # http://localhost:3000
+npm run start:sample   # サンプルデータ（架空）で起動
+npm start              # 本番のデータ（aogaku-tf.com）で起動
 ```
 
-チェック用コマンド:
+- 画面の確認は Expo Go でもできます（通知だけは動きません）
+- 通知まで試すには開発ビルドが必要です：`npx eas-cli@latest build --profile development`
+- データの読み込み先を変えるときは `EXPO_PUBLIC_DATA_URL` を設定します
+
+チェック（コミット前に必ず実行）:
 
 ```bash
-npm run lint
 npm run typecheck
-npm run build
+npm run lint
+npm test
 ```
 
-## Notion との連携
-
-1. 公式サイトで使っている Notion インテグレーションのトークンを `NOTION_TOKEN` に設定します
-2. DB の ID は `.env.example` に記入済みです。公式サイトでは使っていない **高校自己ベストDB・大学結果DB・駅伝青学記録** は、そのインテグレーションに共有してください（DB 右上「…」→「接続」）
-3. `NOTION_TOKEN` を設定すると、ID が空の DB は「データなし」として表示されます（サンプルデータは混ざりません）
-
-| 変数 | DB | アプリでの使い道 |
-|---|---|---|
-| `NOTION_DB_NEWS` | お知らせDB | ホーム・ニュース |
-| `NOTION_DB_RESULTS` | 競技結果DB | 大会結果・選手の成績・自己ベスト自動計算 |
-| `NOTION_DB_SCHEDULE` | 予定DB | 次の大会カウントダウン・日程 |
-| `NOTION_DB_TEAM_RESULTS` | 大学結果DB | 大会カードのチーム順位（総合・往路・復路）。「大会結果」リレーションで個人結果と紐づけます |
-| `NOTION_DB_EKIDEN_RECORDS` | 駅伝青学記録 | 大会タブ →「青学記録」。「公開」列がないため全行を表示します |
-| `NOTION_DB_HS_BESTS` | 高校自己ベストDB | 選手ページで大学の自己ベストと並べて表示 |
-| `NOTION_DB_MEMBERS` | 部員DB | 選手名鑑・結果の選手名・高校ベストの紐づけ。区分「OBOG」は名鑑に出さず、結果の名前表示にだけ使います |
-
-### 反映のタイミング
-
-| データ | 自動反映の目安 |
-|---|---|
-| お知らせ・予定・ホームの最新結果 | 約1分 |
-| 部員・競技結果・チーム成績・コラム・スポンサー・グッズ・御礼 | 約1時間 |
-| 高校自己ベスト・駅伝青学記録 | 約1日 |
-
-すぐ反映させたいときは、次の URL を開くか POST します:
+### フォルダ
 
 ```
-https://<アプリのURL>/api/revalidate?secret=<REVALIDATE_SECRET>
+src/
+├── app/            画面（Expo Router。ファイル＝画面）
+│   ├── (tabs)/     下のタブ：ホーム・新着・大会・部員・動画
+│   ├── member/ meet/ schedule/ video/   詳細画面
+│   └── settings.tsx  通知とアプリの設定
+├── components/     共通の部品（ui.tsx・cards.tsx・icon.tsx）
+├── data/           データの型・読み込み・日付の表示・サンプルデータ
+├── notifications/  Firebase（通知）と、通知・フォローの設定
+└── constants/      色・余白
 ```
 
-**おすすめ**: 公式サイトの Notion ページにあるボタンに「Webhook を送信」アクションを追加し、上の URL を設定しておくと、マネージャーがボタンを押すだけで即時反映できます。
+## 通知（Firebase）の準備
 
-## デプロイ（Vercel）
+1. [Firebase コンソール](https://console.firebase.google.com/)でプロジェクトを作り、iOS アプリと Android アプリを追加する（バンドルID は `app.config.ts` の `BUNDLE_ID`）
+2. iOS：Apple Developer で APNs 認証キー（.p8）を作り、Firebase の「Cloud Messaging」に登録する
+3. `GoogleService-Info.plist` と `google-services.json` を EAS の環境変数（種類：ファイル）に `GOOGLE_SERVICES_PLIST` / `GOOGLE_SERVICES_JSON` として登録する。手元で試すときは `firebase/` フォルダに置く（Git には入れない）
+4. Firebase の「サービスアカウント」で秘密鍵（JSON）を作り、公式サイトのリポジトリの GitHub Secret `FIREBASE_SERVICE_ACCOUNT` に登録する
 
-1. Vercel で「Add New → Project」からこのリポジトリを選択します（設定はすべて初期値のままで大丈夫です）
-2. Environment Variables に `.env.example` の項目を登録します（`NOTION_TOKEN` と `REVALIDATE_SECRET` は必須）
-3. Deploy を押します。以後は main ブランチに push すると自動でデプロイされます
+設定ファイルが無いときは Firebase を組み込まずにビルドし、通知以外はそのまま動きます。
 
-## 今後の拡張案
+## ストアへの公開
 
-- [ ] **プッシュ通知**（大会当日の速報・結果アップ）: Web Push で実装できます。iOS は16.4以降、ホーム画面に追加したアプリで通知を受け取れます。購読者の保存先（Vercel KV など）が必要です
-- [ ] **レース速報**: 予定DBまたは新しい速報DBに通過タイムを入力し、短い間隔で自動更新して表示
-- [ ] **会員限定コンテンツ**（Player! のメンバーシップ機能の代わり）: 認証（Clerk / Supabase Auth など）と決済（Stripe）が必要です
-- [ ] **応援メッセージ投稿**: 送られたメッセージをマネージャーが確認・承認してから表示する仕組み
-- [ ] ネイティブアプリ化（App Store / Google Play への配信）: 必要になったら Capacitor などで今のアプリを包めます
-- [ ] ロゴ画像を使ったアプリアイコン（今は `src/components/AppIcon.tsx` で文字のアイコンを生成しています）
+```bash
+npx eas-cli@latest build --profile preview      # 部内テスト用（TestFlight / 内部テスト）
+npx eas-cli@latest build --profile production
+npx eas-cli@latest submit --profile production
+```
+
+公開の前に `docs/app-plan.md` の「決めること」を済ませる（とくにストアの名義・アプリ名・アイコン）。
+今のアプリ名「青学駅伝」・アイコン・バンドルID（`com.aogakutf.official`）は仮のものです。
+プライバシーポリシーは公式サイトの `privacy.html` に置く前提です（設定画面からリンク）。
