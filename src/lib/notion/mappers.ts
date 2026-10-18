@@ -62,8 +62,19 @@ export function toMember(p: NotionPage): Member {
   };
 }
 
+/** 現役部員か（OBOG と学年未設定の選手は個人ページ・名鑑に出さない） */
+export function isCurrentMember(m: { role: string; grade: string }): boolean {
+  return m.role !== "OBOG" && (m.role !== "選手" || Boolean(m.grade));
+}
+
 export function toMemberName(p: NotionPage): MemberName {
-  return { id: p.id, name: text(p.properties, "氏名"), grade: select(p.properties, "学年") };
+  const grade = select(p.properties, "学年");
+  return {
+    id: p.id,
+    name: text(p.properties, "氏名"),
+    grade,
+    hasPage: isCurrentMember({ role: select(p.properties, "区分"), grade }),
+  };
 }
 
 export function toSchedule(p: NotionPage): ScheduleItem {

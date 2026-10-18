@@ -62,7 +62,19 @@ export function mockMembers(): Member[] {
       order: 100,
     },
   ];
-  return [...players, ...staff];
+  const alumni: Member = {
+    ...staff[0],
+    id: "mock-obog-1",
+    name: "神宮 大地",
+    nameRoman: "",
+    grade: "",
+    gender: "男子",
+    role: "OBOG",
+    position: "",
+    faculty: "",
+    order: null,
+  };
+  return [...players, ...staff, alumni];
 }
 
 export function mockResults(): Result[] {
@@ -107,6 +119,8 @@ export function mockResults(): Result[] {
       });
     });
   });
+  // OBOG の結果（名前は出すが個人ページへのリンクはしない）
+  out.push({ ...out[out.length - 1], id: `mock-result-${++n}`, athleteId: "mock-obog-1", rank: 12, time: "1:04:02", flags: [] });
   return out;
 }
 

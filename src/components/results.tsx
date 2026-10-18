@@ -13,10 +13,17 @@ export function isHighlight(r: Result) {
 function AthleteName({ r, names }: { r: Result; names: Record<string, MemberName> }) {
   const m = r.athleteId ? names[r.athleteId] : undefined;
   if (!m) return <span className="text-ink-2">—</span>;
-  return (
-    <Link href={`/members/${m.id}`} className="font-bold hover:text-brand">
+  const label = (
+    <>
       {m.name}
       {m.grade && <span className="ml-1 text-[11px] font-normal text-ink-2">({m.grade.replace("年", "")})</span>}
+    </>
+  );
+  // OBOG には個人ページがないので名前だけ表示する
+  if (!m.hasPage) return <span className="font-bold">{label}</span>;
+  return (
+    <Link href={`/members/${m.id}`} className="font-bold hover:text-brand">
+      {label}
     </Link>
   );
 }

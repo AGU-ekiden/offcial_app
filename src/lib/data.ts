@@ -18,6 +18,7 @@ import {
   type NotionPage,
 } from "./notion/client";
 import {
+  isCurrentMember,
   toColumn,
   toEkidenRecord,
   toHsBest,
@@ -146,7 +147,7 @@ export async function getMembers(): Promise<Member[]> {
         })
       ).map(toMember)
     : mock.mockMembers();
-  return all.filter((m) => m.role !== "OBOG" && (m.role !== "選手" || m.grade)).sort(sortMembers);
+  return all.filter(isCurrentMember).sort(sortMembers);
 }
 
 export async function getMember(id: string): Promise<Member | null> {
@@ -161,7 +162,7 @@ export async function getMemberNames(): Promise<Record<string, MemberName>> {
   cacheTag(CACHE_TAG, "members");
   const list = fromNotion("members")
     ? (await queryDatabase(DB.members, { filter: PUBLISHED })).map(toMemberName)
-    : mock.mockMembers().map((m) => ({ id: m.id, name: m.name, grade: m.grade }));
+    : mock.mockMembers().map((m) => ({ id: m.id, name: m.name, grade: m.grade, hasPage: isCurrentMember(m) }));
   return Object.fromEntries(list.map((m) => [m.id, m]));
 }
 

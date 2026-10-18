@@ -37,7 +37,8 @@ export type Member = {
   order: number | null;
 };
 
-export type MemberName = { id: string; name: string; grade: string };
+/** 結果表示用の名前。hasPage は個人ページがある（現役部員）かどうか */
+export type MemberName = { id: string; name: string; grade: string; hasPage: boolean };
 
 export type ScheduleItem = {
   id: string;
