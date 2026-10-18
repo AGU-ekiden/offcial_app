@@ -3,7 +3,21 @@
 
 import type { NotionPage } from "./client";
 import { checkbox, date, imageSrc, multiSelect, number, relationIds, select, text, url } from "./props";
-import type { Column, Goods, Member, MemberName, News, Onrei, Photo, Result, ScheduleItem, Sponsor } from "../types";
+import type {
+  Column,
+  EkidenRecord,
+  Goods,
+  HsBest,
+  Member,
+  MemberName,
+  News,
+  Onrei,
+  Photo,
+  Result,
+  ScheduleItem,
+  Sponsor,
+  TeamResult,
+} from "../types";
 
 export function toNews(p: NotionPage): News {
   const P = p.properties;
@@ -148,5 +162,46 @@ export function toPhoto(p: NotionPage): Photo | null {
     athleteIds: relationIds(P, "選手"),
     hero: checkbox(P, "ヒーロー"),
     note: text(P, "備考"),
+  };
+}
+
+export function toHsBest(p: NotionPage): HsBest {
+  const P = p.properties;
+  return {
+    id: p.id,
+    athleteId: relationIds(P, "選手")[0] ?? null,
+    event: select(P, "種目（分類）") || select(P, "種目"),
+    time: text(P, "記録"),
+    memo: text(P, "メモ"),
+  };
+}
+
+export function toTeamResult(p: NotionPage): TeamResult {
+  const P = p.properties;
+  return {
+    id: p.id,
+    meet: text(P, "大会名"),
+    date: date(P, "日付")?.start ?? "",
+    division: select(P, "区分"),
+    gender: select(P, "性別"),
+    rank: number(P, "順位"),
+    time: text(P, "記録"),
+    flags: multiSelect(P, "フラグ"),
+    note: text(P, "備考"),
+    resultIds: relationIds(P, "大会結果"),
+  };
+}
+
+export function toEkidenRecord(p: NotionPage): EkidenRecord {
+  const P = p.properties;
+  return {
+    id: p.id,
+    race: select(P, "大会名"),
+    section: select(P, "区間"),
+    athlete: text(P, "選手名"),
+    grade: number(P, "学年"),
+    distance: number(P, "距離"),
+    time: text(P, "区間記録"),
+    edition: text(P, "大会開催数（大会年度）"),
   };
 }

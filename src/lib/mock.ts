@@ -2,7 +2,20 @@
 // 人名・大会名はすべて架空。
 
 import { addDays, todayJst } from "./time";
-import type { Column, Goods, Member, News, Onrei, Photo, Result, ScheduleItem, Sponsor } from "./types";
+import type {
+  Column,
+  EkidenRecord,
+  Goods,
+  HsBest,
+  Member,
+  News,
+  Onrei,
+  Photo,
+  Result,
+  ScheduleItem,
+  Sponsor,
+  TeamResult,
+} from "./types";
 
 const SAMPLE_NAMES: [string, string, string, string][] = [
   // 氏名, ローマ字, 学年, 出身高校
@@ -213,4 +226,70 @@ export function mockOnrei(): Onrei[] {
 
 export function mockPhotos(): Photo[] {
   return [];
+}
+
+export function mockTeamResults(): TeamResult[] {
+  const today = todayJst();
+  return [
+    {
+      id: "mock-team-1",
+      meet: "第99回 架空駅伝",
+      date: addDays(today, -20),
+      division: "総合",
+      gender: "男子",
+      rank: 1,
+      time: "6:21:45",
+      flags: [
+        { name: "優勝", color: "orange" },
+        { name: "大会新記録", color: "orange" },
+      ],
+      note: "",
+      // mockResults() の駅伝（2番目の大会）の個人結果に紐づける
+      resultIds: ["mock-result-7"],
+    },
+    {
+      id: "mock-team-2",
+      meet: "サンプル市民駅伝",
+      date: addDays(today, -60),
+      division: "総合",
+      gender: "男子",
+      rank: 3,
+      time: "2:05:28",
+      flags: [],
+      note: "",
+      resultIds: [],
+    },
+  ];
+}
+
+export function mockEkidenRecords(): EkidenRecord[] {
+  const rows: [string, string, string, number | null, number | null, string, string][] = [
+    ["箱根駅伝", "1区", "青山 太郎", 4, 21.3, "1:01:23", "第100回（2024）"],
+    ["箱根駅伝", "2区", "渋谷 駿", 3, 23.1, "1:05:44", "第101回（2025）"],
+    ["箱根駅伝", "5区", "表参道 陽向", 4, 20.8, "1:07:16", "第102回（2026）"],
+    ["箱根駅伝", "往路", "青山学院大学", null, null, "5:18:08", "第102回（2026）"],
+    ["箱根駅伝", "総合結果", "青山学院大学", null, null, "10:37:34", "第102回（2026）"],
+    ["出雲駅伝", "1区", "相模 蒼", 4, 8, "22:45", "第34回（2022）"],
+    ["出雲駅伝", "総合結果", "青山学院大学", null, null, "2:09:05", "第27回（2015）"],
+    ["全日本大学駅伝", "1区", "町田 颯", 4, 9.5, "27:08", "第54回（2022）"],
+    ["全日本大学駅伝", "総合結果", "青山学院大学", null, null, "5:09:28", "第57回（2025）"],
+  ];
+  return rows.map(([race, section, athlete, grade, distance, time, edition], i) => ({
+    id: `mock-ekiden-${i + 1}`,
+    race,
+    section,
+    athlete,
+    grade,
+    distance,
+    time,
+    edition,
+  }));
+}
+
+export function mockHsBests(): HsBest[] {
+  return [
+    { id: "mock-hs-1", athleteId: "mock-member-1", event: "5000m", time: "14:02.11", memo: "" },
+    { id: "mock-hs-2", athleteId: "mock-member-1", event: "1500m", time: "3:51.40", memo: "" },
+    { id: "mock-hs-3", athleteId: "mock-member-2", event: "5000m", time: "14:10.62", memo: "" },
+  ];
 }

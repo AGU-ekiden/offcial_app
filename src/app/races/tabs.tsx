@@ -1,12 +1,13 @@
 import Link from "next/link";
 
-export function RaceTabs({ active }: { active: "schedule" | "results" }) {
+export function RaceTabs({ active }: { active: "schedule" | "results" | "records" }) {
   const tabs = [
     { key: "schedule", href: "/races", label: "日程" },
     { key: "results", href: "/races/results", label: "結果" },
+    { key: "records", href: "/races/records", label: "青学記録" },
   ] as const;
   return (
-    <div className="mx-4 mt-2 grid grid-cols-2 rounded-xl bg-surface-2 p-1 text-sm font-bold">
+    <div className="mx-4 mt-2 grid grid-cols-3 rounded-xl bg-surface-2 p-1 text-sm font-bold">
       {tabs.map((t) => (
         <Link
           key={t.key}

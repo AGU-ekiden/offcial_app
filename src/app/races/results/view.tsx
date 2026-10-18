@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { MeetCard } from "@/components/results";
-import { Empty, PageTitle } from "@/components/ui";
-import { getMemberNames, getNendoList, getResultsByNendo } from "@/lib/data";
+import { MeetCard, TeamResultLine } from "@/components/results";
+import { Card, Empty, PageTitle } from "@/components/ui";
+import { attachTeamResults, getMemberNames, getNendoList, getResultsByNendo, getTeamResultsByNendo } from "@/lib/data";
 import { RaceTabs } from "../tabs";
 
 export async function ResultsView({ nendo }: { nendo: number }) {
-  const [meets, names, years] = await Promise.all([getResultsByNendo(nendo), getMemberNames(), getNendoList()]);
+  const [meets, names, years, teams] = await Promise.all([
+    getResultsByNendo(nendo),
+    getMemberNames(),
+    getNendoList(),
+    getTeamResultsByNendo(nendo),
+  ]);
+  const { byMeet, unmatched } = attachTeamResults(meets, teams);
 
   return (
     <>
@@ -27,11 +33,24 @@ export async function ResultsView({ nendo }: { nendo: number }) {
         ))}
       </nav>
 
+      {unmatched.length > 0 && (
+        <section className="mt-4 px-4">
+          <h2 className="pb-2 text-sm font-bold text-ink-2">チーム成績</h2>
+          <Card className="divide-y divide-line">
+            {unmatched.map((t) => (
+              <div key={t.id} className="px-4 py-3">
+                <TeamResultLine team={t} showMeet />
+              </div>
+            ))}
+          </Card>
+        </section>
+      )}
+
       <div className="mt-4 space-y-3 px-4">
         {meets.length === 0 ? (
-          <Empty>{nendo}年度の結果はまだありません</Empty>
+          <Empty>{nendo}年度の個人結果はまだありません</Empty>
         ) : (
-          meets.map((m) => <MeetCard key={m.key} meet={m} names={names} />)
+          meets.map((m) => <MeetCard key={m.key} meet={m} names={names} teams={byMeet[m.key]} />)
         )}
       </div>
     </>

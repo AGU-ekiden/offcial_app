@@ -6,8 +6,9 @@ import { ShareButton } from "@/components/client-utils";
 import { FavoriteButton } from "@/components/favorites";
 import { isHighlight } from "@/components/results";
 import { Avatar, Badge, Card, Empty, Section } from "@/components/ui";
-import { getMember, getMemberPhotos, getMemberResults, getMembers, personalBests } from "@/lib/data";
-import { formatDate } from "@/lib/time";
+import { getHsBests, getMember, getMemberPhotos, getMemberResults, getMembers, personalBests } from "@/lib/data";
+import { formatDate, parseTime } from "@/lib/time";
+import type { HsBest, PersonalBest } from "@/lib/types";
 
 export async function generateStaticParams() {
   const members = await getMembers();
@@ -35,8 +36,12 @@ async function MemberProfile({ params }: Pick<PageProps<"/members/[id]">, "param
   const member = await getMember(id);
   if (!member) notFound();
 
-  const [results, photos] = await Promise.all([getMemberResults(member.id), getMemberPhotos(member.id)]);
-  const pbs = personalBests(results);
+  const [results, photos, hsBests] = await Promise.all([
+    getMemberResults(member.id),
+    getMemberPhotos(member.id),
+    getHsBests(member.id),
+  ]);
+  const bests = mergeBests(personalBests(results), hsBests);
   const isPlayer = member.role === "選手";
 
   return (
@@ -64,21 +69,36 @@ async function MemberProfile({ params }: Pick<PageProps<"/members/[id]">, "param
 
       {isPlayer && (
         <Section title="自己ベスト">
-          {pbs.length === 0 ? (
+          {bests.length === 0 ? (
             <Empty>記録はまだ登録されていません</Empty>
           ) : (
             <ul className="grid grid-cols-2 gap-2 px-4">
-              {pbs.map((pb) => (
-                <li key={pb.event}>
-                  <Card className="p-3">
-                    <p className="text-xs font-bold text-ink-2">{pb.event}</p>
-                    <p className="font-display text-2xl font-semibold tabular">{pb.time}</p>
-                    <p className="mt-1 line-clamp-1 text-[11px] text-ink-2">
-                      {formatDate(pb.date)} {pb.meet}
-                    </p>
-                  </Card>
-                </li>
-              ))}
+              {bests.map(({ event, pb, hs }) => {
+                const diff = pb && hs ? improvement(pb.time, hs.time) : null;
+                return (
+                  <li key={event}>
+                    <Card className="h-full p-3">
+                      <p className="text-xs font-bold text-ink-2">{event}</p>
+                      {pb ? (
+                        <>
+                          <p className="font-display text-2xl font-semibold tabular">{pb.time}</p>
+                          <p className="mt-1 line-clamp-1 text-[11px] text-ink-2">
+                            {formatDate(pb.date)} {pb.meet}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="py-1 text-xs text-ink-2">大学での記録なし</p>
+                      )}
+                      {hs && (
+                        <p className="mt-2 border-t border-line pt-2 text-[11px] text-ink-2">
+                          高校 <span className="font-bold text-ink tabular">{hs.time}</span>
+                          {diff && <span className="ml-1 font-bold text-brand">{diff}</span>}
+                        </p>
+                      )}
+                    </Card>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Section>
@@ -141,6 +161,37 @@ async function MemberProfile({ params }: Pick<PageProps<"/members/[id]">, "param
       )}
     </>
   );
+}
+
+const EVENT_ORDER = ["800m", "1500m", "3000m", "3000mSC", "5000m", "10000m", "ハーフマラソン", "マラソン"];
+
+/** 大学の自己ベスト（競技結果DBから算出）と高校の自己ベスト（高校自己ベストDB）を種目ごとに並べる */
+function mergeBests(pbs: PersonalBest[], hsBests: HsBest[]) {
+  const events = new Map<string, { event: string; pb?: PersonalBest; hs?: HsBest }>();
+  for (const pb of pbs) events.set(pb.event, { event: pb.event, pb });
+  for (const hs of hsBests) {
+    const event = hs.event === "フルマラソン" ? "マラソン" : hs.event;
+    if (!event) continue;
+    const cur = events.get(event) ?? { event };
+    // 同じ種目が複数行ある場合は速い方を採用
+    const sec = parseTime(hs.time);
+    const curSec = cur.hs ? parseTime(cur.hs.time) : null;
+    if (!cur.hs || (sec !== null && (curSec === null || sec < curSec))) cur.hs = hs;
+    events.set(event, cur);
+  }
+  const rank = (e: string) => (EVENT_ORDER.includes(e) ? EVENT_ORDER.indexOf(e) : 99);
+  return [...events.values()].sort((a, b) => rank(a.event) - rank(b.event));
+}
+
+/** 高校ベストから何秒縮めたか（"−16.9秒" / "−1分02秒"） */
+function improvement(univ: string, hs: string): string | null {
+  const a = parseTime(univ);
+  const b = parseTime(hs);
+  if (a === null || b === null || a >= b) return null;
+  const d = b - a;
+  if (d < 60) return `−${d.toFixed(d < 10 ? 2 : 1)}秒`;
+  const total = Math.round(d);
+  return `−${Math.floor(total / 60)}分${String(total % 60).padStart(2, "0")}秒`;
 }
 
 function ProfileSkeleton() {

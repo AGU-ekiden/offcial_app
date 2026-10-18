@@ -9,6 +9,9 @@ export const DB = {
   photos: process.env.NOTION_DB_PHOTOS ?? "",
   columns: process.env.NOTION_DB_COLUMNS ?? "",
   goods: process.env.NOTION_DB_GOODS ?? "",
+  hsBests: process.env.NOTION_DB_HS_BESTS ?? "",
+  teamResults: process.env.NOTION_DB_TEAM_RESULTS ?? "",
+  ekidenRecords: process.env.NOTION_DB_EKIDEN_RECORDS ?? "",
 };
 
 export type DbKey = keyof typeof DB;

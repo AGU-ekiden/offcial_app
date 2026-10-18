@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatDate } from "@/lib/time";
-import type { Meet, MemberName, Result } from "@/lib/types";
+import type { Meet, MemberName, Result, TeamResult } from "@/lib/types";
 import { Badge, Card, KindTag } from "./ui";
 
 // 目立たせたいフラグ（PB・区間賞・入賞など）
@@ -47,13 +47,54 @@ function ResultRow({ r, names }: { r: Result; names: Record<string, MemberName> 
   );
 }
 
+/** チーム成績（総合・往路・復路）の1行 */
+export function TeamResultLine({ team, showMeet = false }: { team: TeamResult; showMeet?: boolean }) {
+  const label = team.division && team.division !== "総合" ? team.division : "総合";
+  return (
+    <div className="flex items-center gap-3">
+      <div className="min-w-0 flex-1">
+        {showMeet ? (
+          <>
+            <p className="text-[11px] text-ink-2 tabular">{formatDate(team.date, true)}</p>
+            <p className="line-clamp-2 text-sm font-bold">{team.meet}</p>
+          </>
+        ) : (
+          <p className="text-xs font-bold">チーム{label}</p>
+        )}
+        {team.flags.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {team.flags.map((f) => (
+              <Badge key={f.name} tag={f} />
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="text-right">
+        <p className="font-display text-xl font-bold tabular">
+          {team.rank !== null ? (
+            <>
+              {team.rank}
+              <span className="text-xs font-normal">位</span>
+            </>
+          ) : (
+            "—"
+          )}
+        </p>
+        <p className="text-xs text-ink-2 tabular">{team.time}</p>
+      </div>
+    </div>
+  );
+}
+
 export function MeetCard({
   meet,
   names,
+  teams = [],
   compact = false,
 }: {
   meet: Meet;
   names: Record<string, MemberName>;
+  teams?: TeamResult[];
   compact?: boolean;
 }) {
   const highlights = meet.results.filter(isHighlight);
@@ -70,6 +111,13 @@ export function MeetCard({
         <h3 className="mt-1 font-bold leading-snug">{meet.name}</h3>
         {meet.venue && <p className="text-xs text-ink-2">{meet.venue}</p>}
       </div>
+      {teams.length > 0 && (
+        <div className="space-y-2 border-b border-line bg-brand/10 px-4 py-3">
+          {teams.map((t) => (
+            <TeamResultLine key={t.id} team={t} />
+          ))}
+        </div>
+      )}
       {results.length === 0 ? (
         <p className="px-4 py-3 text-sm text-ink-2">{meet.results.length}名が出場</p>
       ) : (

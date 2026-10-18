@@ -19,6 +19,9 @@ import {
 } from "./notion/client";
 import {
   toColumn,
+  toEkidenRecord,
+  toHsBest,
+  toTeamResult,
   toGoods,
   toMember,
   toMemberName,
@@ -30,9 +33,9 @@ import {
   toSponsor,
 } from "./notion/mappers";
 import { checkbox, fileUrl, files } from "./notion/props";
-import * as mock from "./mock";
+import * as sampleData from "./mock";
 import { addDays, nendoOf, nendoRange, parseTime, todayJst } from "./time";
-import type { Meet, Member, MemberName, PersonalBest, Photo, Result } from "./types";
+import type { EkidenRecord, HsBest, Meet, Member, MemberName, PersonalBest, Photo, Result, TeamResult } from "./types";
 
 export const CACHE_TAG = "notion";
 
@@ -42,6 +45,14 @@ const BY_DATE_DESC = [{ property: "日付", direction: "descending" }];
 function fromNotion(db: DbKey): boolean {
   return isNotionConfigured() && Boolean(DB[db]);
 }
+
+/**
+ * サンプルデータ。NOTION_TOKEN が未設定のときだけ使う。
+ * トークン設定済みで DB ID が未設定の項目は、サンプルを混ぜずに空として扱う。
+ */
+const mock = Object.fromEntries(
+  Object.entries(sampleData).map(([name, fn]) => [name, () => (isNotionConfigured() ? [] : fn())]),
+) as typeof sampleData;
 
 const normalizeId = (id: string) => id.replace(/-/g, "");
 
@@ -224,7 +235,7 @@ export async function getNendoList(): Promise<number[]> {
     );
     if (first) oldest = nendoOf(toResult(first).date || todayJst());
   } else {
-    oldest = Math.min(...mock.mockResults().map((r) => nendoOf(r.date)));
+    oldest = Math.min(current, ...mock.mockResults().map((r) => nendoOf(r.date)));
   }
   return Array.from({ length: current - oldest + 1 }, (_, i) => current - i);
 }
@@ -265,6 +276,95 @@ export function personalBests(results: Result[]): PersonalBest[] {
     const { r } = best.get(e)!;
     return { event: e, time: r.time, date: r.date, meet: r.meet };
   });
+}
+
+/* ───────── チーム成績・駅伝記録・高校ベスト ───────── */
+
+export async function getTeamResultsByNendo(nendo: number): Promise<TeamResult[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(CACHE_TAG, "teamResults");
+  if (!fromNotion("teamResults")) return mock.mockTeamResults().filter((t) => nendoOf(t.date) === nendo);
+  const { start, end } = nendoRange(nendo);
+  const pages = await queryDatabase(DB.teamResults, {
+    filter: {
+      and: [
+        PUBLISHED,
+        { property: "日付", date: { on_or_after: start } },
+        { property: "日付", date: { on_or_before: end } },
+      ],
+    },
+    sorts: BY_DATE_DESC,
+  });
+  return pages.map(toTeamResult);
+}
+
+export async function getRecentTeamResults(limit = 20): Promise<TeamResult[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(CACHE_TAG, "teamResults");
+  if (!fromNotion("teamResults")) return mock.mockTeamResults().slice(0, limit);
+  return (await queryDatabase(DB.teamResults, { filter: PUBLISHED, sorts: BY_DATE_DESC }, limit)).map(toTeamResult);
+}
+
+const DIVISION_ORDER = ["総合", "往路", "復路"];
+
+/**
+ * チーム成績を大会（個人結果のまとまり）に紐づける。
+ * 大学結果DBの「大会結果」リレーションが指す個人結果を含む大会に入れ、
+ * どの大会にも入らなかったものは unmatched として返す。
+ */
+export function attachTeamResults(meets: Meet[], teams: TeamResult[]) {
+  const byResultId = new Map<string, string>();
+  for (const m of meets) for (const r of m.results) byResultId.set(normalizeId(r.id), m.key);
+
+  const byMeet: Record<string, TeamResult[]> = {};
+  const unmatched: TeamResult[] = [];
+  for (const t of teams) {
+    const key = t.resultIds.map((id) => byResultId.get(normalizeId(id))).find(Boolean);
+    if (key) (byMeet[key] ??= []).push(t);
+    else unmatched.push(t);
+  }
+  for (const list of Object.values(byMeet)) {
+    list.sort((a, b) => DIVISION_ORDER.indexOf(a.division) - DIVISION_ORDER.indexOf(b.division));
+  }
+  return { byMeet, unmatched };
+}
+
+const RACE_ORDER = ["箱根駅伝", "出雲駅伝", "全日本大学駅伝"];
+const SECTION_ORDER = (s: string) => {
+  const n = Number(s.replace("区", ""));
+  if (Number.isInteger(n) && n > 0) return n;
+  return 100 + ["往路", "復路", "総合結果"].indexOf(s);
+};
+
+/** 三大駅伝の青学記録を大会ごとにまとめて返す */
+export async function getEkidenRecords(): Promise<{ race: string; records: EkidenRecord[] }[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag(CACHE_TAG, "ekidenRecords");
+  const all = fromNotion("ekidenRecords")
+    ? (await queryDatabase(DB.ekidenRecords)).map(toEkidenRecord)
+    : mock.mockEkidenRecords();
+  // このDBには「公開」列がないため、大会名・区間が入っている行をすべて表示する
+  const valid = all.filter((r) => r.race && r.section && r.time);
+  const rank = (race: string) => (RACE_ORDER.includes(race) ? RACE_ORDER.indexOf(race) : 99);
+  const races = [...new Set(valid.map((r) => r.race))].sort((a, b) => rank(a) - rank(b));
+  return races.map((race) => ({
+    race,
+    records: valid.filter((r) => r.race === race).sort((a, b) => SECTION_ORDER(a.section) - SECTION_ORDER(b.section)),
+  }));
+}
+
+export async function getHsBests(memberId: string): Promise<HsBest[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag(CACHE_TAG, "hsBests");
+  if (!fromNotion("hsBests")) return mock.mockHsBests().filter((h) => h.athleteId === memberId);
+  const pages = await queryDatabase(DB.hsBests, {
+    filter: { and: [PUBLISHED, { property: "選手", relation: { contains: memberId } }] },
+  });
+  return pages.map(toHsBest).filter((h) => h.time);
 }
 
 /* ───────── 予定 ───────── */

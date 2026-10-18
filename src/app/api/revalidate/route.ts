@@ -6,7 +6,7 @@ import { CACHE_TAG } from "@/lib/data";
 // Notion のボタン（Webhook 送信）や Notion オートメーションから叩く想定。
 //   POST /api/revalidate?secret=<REVALIDATE_SECRET>            … 全データ
 //   POST /api/revalidate?secret=<REVALIDATE_SECRET>&tag=news   … お知らせだけ
-const TAGS = new Set([CACHE_TAG, "news", "columns", "members", "results", "schedule", "sponsors", "goods", "onrei", "photos"]);
+const TAGS = new Set([CACHE_TAG, "news", "columns", "members", "results", "schedule", "sponsors", "goods", "onrei", "photos", "teamResults", "ekidenRecords", "hsBests"]);
 
 async function handle(request: NextRequest) {
   const secret = process.env.REVALIDATE_SECRET;

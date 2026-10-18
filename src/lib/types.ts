@@ -121,3 +121,32 @@ export type Photo = {
 };
 
 export type PersonalBest = { event: string; time: string; date: string; meet: string };
+
+/** 高校時代の自己ベスト（高校自己ベストDB） */
+export type HsBest = { id: string; athleteId: string | null; event: string; time: string; memo: string };
+
+/** チームとしての大会結果（大学結果DB）。複数日程の駅伝は 往路/復路/総合 で1行ずつ */
+export type TeamResult = {
+  id: string;
+  meet: string;
+  date: string;
+  division: string;
+  gender: string;
+  rank: number | null;
+  time: string;
+  flags: Tag[];
+  note: string;
+  resultIds: string[];
+};
+
+/** 三大駅伝の区間ごとの青学記録（駅伝青学記録DB） */
+export type EkidenRecord = {
+  id: string;
+  race: string;
+  section: string;
+  athlete: string;
+  grade: number | null;
+  distance: number | null;
+  time: string;
+  edition: string;
+};

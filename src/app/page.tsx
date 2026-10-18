@@ -4,12 +4,22 @@ import { FavoriteStrip } from "@/components/favorites";
 import { InstallBanner } from "@/components/client-utils";
 import { MeetCard } from "@/components/results";
 import { Card, Empty, KindTag, NewsTag, Section } from "@/components/ui";
-import { getHeroPhotos, getMemberNames, getMembers, getNews, getRecentMeets, getSchedule, getSponsors } from "@/lib/data";
+import {
+  attachTeamResults,
+  getHeroPhotos,
+  getMemberNames,
+  getMembers,
+  getNews,
+  getRecentMeets,
+  getRecentTeamResults,
+  getSchedule,
+  getSponsors,
+} from "@/lib/data";
 import { formatDate, formatDateRange } from "@/lib/time";
 import { newsHref } from "./news/href";
 
 export default async function Home() {
-  const [schedule, news, meets, names, members, sponsors, heroes] = await Promise.all([
+  const [schedule, news, meets, names, members, sponsors, heroes, teams] = await Promise.all([
     getSchedule(),
     getNews(5),
     getRecentMeets(2),
@@ -17,7 +27,9 @@ export default async function Home() {
     getMembers(),
     getSponsors(),
     getHeroPhotos(),
+    getRecentTeamResults(10),
   ]);
+  const { byMeet } = attachTeamResults(meets, teams);
   const next = schedule[0];
   const hero = heroes[0];
 
@@ -88,7 +100,7 @@ export default async function Home() {
         ) : (
           <div className="space-y-3 px-4">
             {meets.map((m) => (
-              <MeetCard key={m.key} meet={m} names={names} compact />
+              <MeetCard key={m.key} meet={m} names={names} teams={byMeet[m.key]} compact />
             ))}
           </div>
         )}
